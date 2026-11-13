@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const sharp = require('sharp');
 const native = require('../build/Release/lcms_native.node');
 const { RefRGB, deltaE2000 } = require('./ref-engine');
+const { verifyTransform } = require('./color-verify');
 const { embedIcc: pngEmbedIcc, extractIcc: pngExtractIcc } = require('./png-icc');
 const { encodePng } = require('./png-encode');
 const { jpegEmbedIcc, jpegExtractIcc, jpegStripIcc } = require('./jpeg-icc');
@@ -203,16 +204,24 @@ async function assignProfile(fileBuf, iccBuf, options = {}) {
 // 源配置缺失时的显式假设记录
 function resolveSourceProfile(img, explicit) {
   if (img.embeddedIcc) return { icc: img.embeddedIcc, assumed: false, assumption: null };
-  if (!explicit || !explicit.assumeProfileId) {
+  if (!explicit || (!explicit.assumeProfileId && !explicit.assumeIcc)) {
     fail('SOURCE_PROFILE_MISSING',
       '图像未嵌入 ICC 配置。必须由使用者明确指定一个来源假设，内核不会自动假定所有图像同属某色域。');
   }
-  const icc = builtinProfile(explicit.assumeProfileId);
+  let icc;
+  if (explicit.assumeIcc) {
+    if (!Buffer.isBuffer(explicit.assumeIcc)) fail('PROFILE_INVALID', '假设的来源配置必须为 ICC 字节');
+    profileIdentity(explicit.assumeIcc); // 提前校验，失败即 ERROR
+    icc = explicit.assumeIcc;
+  } else {
+    icc = builtinProfile(explicit.assumeProfileId);
+  }
   return {
     icc,
     assumed: true,
     assumption: {
-      assumedProfileId: explicit.assumeProfileId,
+      assumedProfileId: explicit.assumeProfileId || `sha256:${sha256(icc).slice(0, 16)}`,
+      assumedProfileSha256: sha256(icc),
       reason: explicit.reason || '(未填写依据)',
       recordedAt: new Date().toISOString(),
       warning: '该配置为人工假设而非文件自带，转换结果的可信度取决于假设是否成立；已写入审计记录。',
@@ -284,6 +293,25 @@ async function convertImage(fileBuf, opts) {
   const delta = await deltaEStats(img, src.icc, out, dstIcc, bps, img.hasAlpha, sameProfile);
   const probePoints = opts.probePoints || defaultProbePoints(img.width, img.height);
   const probes = probePointsFn(img, src.icc, sameProfile ? null : out, dstIcc, probePoints, bps, img.hasAlpha);
+  // 独立验收证据：纯 JS 参考引擎逐采样推导期望值，比对实际输出像素、透明通道与配置身份。
+  // 这是执行证据，非界面自述；失败会进入 failures，界面直接提示。
+  const verification = verifyTransform({
+    srcIcc: src.icc, dstIcc,
+    srcPixels: img.pixels, outPixels: out,
+    width: img.width, height: img.height, bits: bps,
+    channels: img.hasAlpha ? 4 : 3,
+    intent,
+    gamutMode,
+    expectedSrcIcc: src.icc,
+    expectedDstIcc: dstIcc,
+  });
+  if (sameProfile) {
+    verification.color = { skipped: true, reason: '源与目标配置指纹相同，未执行像素变换' };
+    verification.alpha = { applicable: img.hasAlpha, checkedPixels: 0, mismatchedPixels: 0,
+      preserved: true, skippedReason: '未执行像素变换' };
+    verification.ok = true;
+    verification.failures = [];
+  }
 
   return {
     output: encoded,
@@ -296,10 +324,12 @@ async function convertImage(fileBuf, opts) {
     gamut,
     deltaE: delta,
     probes,
+    verification,
     audit: {
       engine: 'LittleCMS2 (liblcms2 2.14) 经 node-addon-api 原生封装',
-      alphaPreserved: true,
+      alphaPreserved: verification.alpha.preserved,
       highBitDepthPath: bps === 16 ? '16 位缓冲直通 lcms2（TYPE_RGB_16），未经过 8 位降级' : '8 位',
+      independentVerification: verification.color.referenceEngine,
     },
   };
 }

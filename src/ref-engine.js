@@ -159,6 +159,8 @@ function mul3(M, v) {
     M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2],
   ];
 }
+function clamp01(v) { return Math.min(1, Math.max(0, v)); }
+function xyzOfWhite(w) { return [w.X, w.Y, w.Z]; }
 function inv3(M) {
   const a = M, d = [];
   for (let i = 0; i < 3; i++) d.push([0, 0, 0]);
@@ -238,6 +240,7 @@ function deltaE2000(Lab1, Lab2) {
 class RefRGB {
   constructor(icc) { this.p = parseMatrixShaper(icc); }
   get sha256() { return this.p.sha256; }
+  get mediaWhite() { return xyzOfWhite(this.p.white); }
   rgbToXyz(rgb) {
     const lin = rgb.map((v, i) => trcForward(v, this.p.trc[i]));
     // ICC rXYZ/gXYZ/bXYZ 矩阵输出即 D50 media-relative XYZ，直接相乘，不再做白点缩放
@@ -247,7 +250,39 @@ class RefRGB {
     const lin = mul3(this.p.Minv, xyz);
     return lin.map((v, i) => trcInverse(v, this.p.trc[i]));
   }
+  // 不做限幅，暴露目标编码域外的线性值（超色域判定依据）
+  xyzToLinear(xyz) { return mul3(this.p.Minv, xyz); }
+  // 经本配置变换后目标线性 RGB 是否落在 [0,1]（=是否超色域）
+  xyzInGamut(xyz) {
+    const lin = this.xyzToLinear(xyz);
+    return lin.every((v) => v >= -1e-6 && v <= 1 + 1e-6);
+  }
   rgbToLab(rgb) { return xyzToLab(this.rgbToXyz(rgb)); }
+
+  // 跨配置转换的独立推导（不调用 lcms）：
+  //   relative-colorimetric：源媒体相对 XYZ 经 PCS 直接落到目标媒体相对 XYZ（白点适应）；
+  //   absolute-colorimetric：先按源/目标媒体白点把相对 XYZ 还原为绝对 XYZ，
+  //     即 XYZ_abs = XYZ_rel * W_src / W_dst，再用目标矩阵反解编码值。
+  // 返回值中的 rgb01 已限幅到 [0,1]；linear 未限幅，可用于超色域判定。
+  convertTo(dstRef, rgb, opts = {}) {
+    const intent = opts.intent || 'relative-colorimetric';
+    if (intent !== 'relative-colorimetric' && intent !== 'absolute-colorimetric') {
+      throw new Error('独立参考引擎仅推导相对/绝对色度语义: ' + intent);
+    }
+    const xyzRel = this.rgbToXyz(rgb);
+    let xyz = xyzRel;
+    if (intent === 'absolute-colorimetric') {
+      const ws = this.mediaWhite, wd = dstRef.mediaWhite;
+      xyz = xyzRel.map((v, i) => v * ws[i] / wd[i]);
+    }
+    const linear = dstRef.xyzToLinear(xyz);
+    return {
+      xyzRel,
+      linear,
+      rgb01: linear.map((v, i) => clamp01(trcInverse(v, dstRef.p.trc[i]))),
+      inGamut: linear.every((v) => v >= -1e-6 && v <= 1 + 1e-6),
+    };
+  }
 }
 
 module.exports = { RefRGB, deltaE2000, xyzToLab, D50 };

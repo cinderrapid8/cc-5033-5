@@ -1,0 +1,381 @@
+{
+  "generatedBy": "test/fixtures.js (deterministic)",
+  "profiles": [
+    {
+      "id": "ctrl-srgb",
+      "file": "ctrl-srgb.icc",
+      "description": "Ctrl sRGB (D65, gamma 2.2)",
+      "white": [
+        0.3127,
+        0.329
+      ],
+      "primaries": [
+        [
+          0.64,
+          0.33
+        ],
+        [
+          0.3,
+          0.6
+        ],
+        [
+          0.15,
+          0.06
+        ]
+      ],
+      "gamma": 2.2,
+      "bytes": 544,
+      "sha256": "becce96e77e1648068803c6b495d30c0af5bae1d2f2e379b1bf26aef1450d2a5"
+    },
+    {
+      "id": "ctrl-p3",
+      "file": "ctrl-p3.icc",
+      "description": "Ctrl Wide P3 (D65, gamma 2.2)",
+      "white": [
+        0.3127,
+        0.329
+      ],
+      "primaries": [
+        [
+          0.68,
+          0.32
+        ],
+        [
+          0.265,
+          0.69
+        ],
+        [
+          0.15,
+          0.06
+        ]
+      ],
+      "gamma": 2.2,
+      "bytes": 548,
+      "sha256": "a1e75d7bcfce9ce60354e35d998d441b17ca47c0bdfad341a4060983bb92b585"
+    },
+    {
+      "id": "ctrl-narrow",
+      "file": "ctrl-narrow.icc",
+      "description": "Ctrl Narrow (D65, gamma 2.2)",
+      "white": [
+        0.3127,
+        0.329
+      ],
+      "primaries": [
+        [
+          0.5,
+          0.4
+        ],
+        [
+          0.3,
+          0.55
+        ],
+        [
+          0.2,
+          0.2
+        ]
+      ],
+      "gamma": 2.2,
+      "bytes": 548,
+      "sha256": "cb9960e8d5a655fb36ec94fbb52e1f15f09e1fa80aded85c2869efd4e2268e62"
+    },
+    {
+      "id": "ctrl-linear",
+      "file": "ctrl-linear.icc",
+      "description": "Ctrl Linear (D65, gamma 1.0)",
+      "white": [
+        0.3127,
+        0.329
+      ],
+      "primaries": [
+        [
+          0.64,
+          0.33
+        ],
+        [
+          0.3,
+          0.6
+        ],
+        [
+          0.15,
+          0.06
+        ]
+      ],
+      "gamma": 1,
+      "bytes": 548,
+      "sha256": "994a0d779ad74d8e751829657228d230624dd413ead77f76ca446b02285b3b10"
+    },
+    {
+      "id": "ctrl-warm",
+      "file": "ctrl-warm.icc",
+      "description": "Ctrl Warm media white (sRGB primaries)",
+      "white": [
+        0.38,
+        0.36
+      ],
+      "primaries": [
+        [
+          0.64,
+          0.33
+        ],
+        [
+          0.3,
+          0.6
+        ],
+        [
+          0.15,
+          0.06
+        ]
+      ],
+      "gamma": 2.2,
+      "bytes": 568,
+      "sha256": "a82d5c7cf6baa3de172ab889e0bfa63476aa21d526ef72bc30456d4bb6fa2a4d"
+    },
+    {
+      "id": "ctrl-cool",
+      "file": "ctrl-cool.icc",
+      "description": "Ctrl Cool media white (sRGB primaries)",
+      "white": [
+        0.28,
+        0.3
+      ],
+      "primaries": [
+        [
+          0.64,
+          0.33
+        ],
+        [
+          0.3,
+          0.6
+        ],
+        [
+          0.15,
+          0.06
+        ]
+      ],
+      "gamma": 2.2,
+      "bytes": 568,
+      "sha256": "efef64d8757cbf314d9f2d7a001779ccf3aa780e2cad692429e12a48ef5f2869"
+    }
+  ],
+  "images": [
+    {
+      "file": "ctrl-patches-8.png",
+      "kind": "patches",
+      "profileId": "ctrl-srgb",
+      "bits": 8,
+      "channels": 3,
+      "width": 192,
+      "height": 64,
+      "description": "已知 12 色补丁（Ctrl sRGB 8 位）",
+      "sha256": "6643288c50e6e25f45bf3e54ef239f8b657b35985645b2763d8ef8a4f149c9fd"
+    },
+    {
+      "file": "ctrl-patches-16.png",
+      "kind": "patches",
+      "profileId": "ctrl-srgb",
+      "bits": 16,
+      "channels": 3,
+      "width": 192,
+      "height": 64,
+      "description": "已知 12 色补丁（Ctrl sRGB 16 位）",
+      "sha256": "376e913f3ee60c087dacddb1c68f1b322a26190c8719fd988de4a0667a603584"
+    },
+    {
+      "file": "ctrl-warm-patches-8.png",
+      "kind": "patches",
+      "profileId": "ctrl-warm",
+      "bits": 8,
+      "channels": 3,
+      "width": 192,
+      "height": 64,
+      "description": "已知 12 色补丁（Ctrl Warm 8 位，用于绝对/相对色度区分）",
+      "sha256": "f4a08c3d40e48b1c1c4a5debe3c5a22a4593788f3c9f06bb2ef7ce1ab8f99c80"
+    },
+    {
+      "file": "ctrl-alpha-8.png",
+      "kind": "alpha",
+      "profileId": "ctrl-srgb",
+      "bits": 8,
+      "channels": 4,
+      "width": 16,
+      "height": 16,
+      "description": "透明通道样例（8 位 RGBA，alpha 横向渐变）",
+      "sha256": "b8486dd04d75ba8923d583da0b4ee0f690191ed9730bdf3328a74de8c6c9a3b2"
+    },
+    {
+      "file": "ctrl-alpha-16.png",
+      "kind": "alpha",
+      "profileId": "ctrl-srgb",
+      "bits": 16,
+      "channels": 4,
+      "width": 8,
+      "height": 8,
+      "description": "透明通道样例（16 位 RGBA）",
+      "sha256": "fc240781422cbb5789852ac2b91bb64cdc009ba0351cc751f34180aca89a9790"
+    },
+    {
+      "file": "ctrl-wide-8.png",
+      "kind": "wide",
+      "profileId": "ctrl-p3",
+      "bits": 8,
+      "channels": 3,
+      "width": 72,
+      "height": 24,
+      "description": "域外颜色样例（Ctrl P3 高饱和原色，对窄色域超界）",
+      "sha256": "85c22db38fe8f8747b6045c4d2bd9f0c97c074a07d0f8d6a641c8669a0df03b3"
+    },
+    {
+      "file": "ctrl-neutral-8.png",
+      "kind": "neutral",
+      "profileId": "ctrl-srgb",
+      "bits": 8,
+      "channels": 3,
+      "width": 128,
+      "height": 16,
+      "description": "域内中性阶（Ctrl sRGB -> 窄色域不应超界）",
+      "sha256": "e5d3ff7cedd9dc48937cd125c718e371a434d96d5e3a7cd5866e0e1a680b1250"
+    },
+    {
+      "file": "ctrl-ramp-8.png",
+      "kind": "ramp",
+      "profileId": "ctrl-linear",
+      "bits": 8,
+      "channels": 3,
+      "width": 256,
+      "height": 8,
+      "description": "线性 TRC 渐变（语义推导用）",
+      "sha256": "a55f743694e4053a4ffe5de288c5bb75b28a9a746475d3a0a993779c5e5b18b2"
+    },
+    {
+      "file": "ctrl-untagged-8.png",
+      "kind": "constant",
+      "profileId": null,
+      "bits": 8,
+      "channels": 3,
+      "width": 16,
+      "height": 16,
+      "description": "无配置样例（用于缺失源配置正反例）",
+      "sha256": "6592718619afc4a5e1099e21edf9df7ab9e54274f116c00391123b831482ed9d"
+    },
+    {
+      "file": "ctrl-untagged-alpha-8.png",
+      "kind": "alphaConstant",
+      "profileId": null,
+      "bits": 8,
+      "channels": 4,
+      "width": 8,
+      "height": 8,
+      "description": "无配置透明样例（缺失配置 + alpha 同时验证）",
+      "sha256": "6859b45037d0611e23a213c3259ad825bf8341ec753e4f1b9fd29548d65df07d"
+    }
+  ],
+  "patches": [
+    {
+      "name": "white",
+      "rgb8": [
+        255,
+        255,
+        255
+      ]
+    },
+    {
+      "name": "neutral-128",
+      "rgb8": [
+        128,
+        128,
+        128
+      ]
+    },
+    {
+      "name": "black",
+      "rgb8": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "red",
+      "rgb8": [
+        255,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "green",
+      "rgb8": [
+        0,
+        255,
+        0
+      ]
+    },
+    {
+      "name": "blue",
+      "rgb8": [
+        0,
+        0,
+        255
+      ]
+    },
+    {
+      "name": "cyan",
+      "rgb8": [
+        0,
+        255,
+        255
+      ]
+    },
+    {
+      "name": "magenta",
+      "rgb8": [
+        255,
+        0,
+        255
+      ]
+    },
+    {
+      "name": "yellow",
+      "rgb8": [
+        255,
+        255,
+        0
+      ]
+    },
+    {
+      "name": "skin",
+      "rgb8": [
+        222,
+        184,
+        135
+      ]
+    },
+    {
+      "name": "navy",
+      "rgb8": [
+        25,
+        25,
+        112
+      ]
+    },
+    {
+      "name": "brown",
+      "rgb8": [
+        101,
+        67,
+        33
+      ]
+    }
+  ],
+  "neutralSteps": [
+    0,
+    32,
+    64,
+    96,
+    128,
+    160,
+    192,
+    224
+  ]
+}

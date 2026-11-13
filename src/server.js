@@ -8,6 +8,35 @@ const kernel = require('./color-kernel');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8080;
 const PUBLIC = path.join(__dirname, '..', 'web');
+const FIXTURE_DIR = path.join(__dirname, '..', 'testdata', 'controlled');
+
+// 仅暴露清单内文件名，避免路径穿越；无清单时返回空列表
+function readFixtureManifest() {
+  const manifestPath = path.join(FIXTURE_DIR, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) return null;
+  try { return JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) { return null; }
+}
+const FIXTURE_MANIFEST = readFixtureManifest();
+const FIXTURE_NAMES = new Set(
+  FIXTURE_MANIFEST ? FIXTURE_MANIFEST.images.map((i) => i.file) : []);
+
+function listFixtures() {
+  if (!FIXTURE_MANIFEST) return [];
+  return FIXTURE_MANIFEST.images.map((img) => ({
+    file: img.file,
+    url: '/fixtures/' + img.file,
+    kind: img.kind,
+    description: img.description,
+    bits: img.bits,
+    width: img.width,
+    height: img.height,
+    profileId: img.profileId,
+    profileDescription: img.profileId
+      ? (FIXTURE_MANIFEST.profiles.find((p) => p.id === img.profileId) || {}).description || null
+      : null,
+    profileMissing: !img.profileId,
+  }));
+}
 
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
@@ -138,9 +167,24 @@ const server = http.createServer(async (req, res) => {
         gamut: result.gamut,
         deltaE: result.deltaE,
         probes: result.probes,
+        verification: result.verification,
         audit: result.audit,
         downloadPath,
       });
+    }
+
+    // 受控色管验证样例：从图像色管界面直接打开，供手动切换配置比对
+    if (req.method === 'GET' && url.pathname === '/api/fixtures') {
+      return sendJson(res, 200, { ok: true, fixtures: listFixtures() });
+    }
+    if (req.method === 'GET' && url.pathname.startsWith('/fixtures/')) {
+      const name = path.basename(url.pathname.replace('/fixtures/', ''));
+      const file = path.join(FIXTURE_DIR, name);
+      if (!FIXTURE_NAMES.has(name) || !fs.existsSync(file)) {
+        return sendJson(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: '样例不存在' } });
+      }
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      return fs.createReadStream(file).pipe(res);
     }
 
     if (req.method === 'GET' && url.pathname.startsWith('/download/')) {

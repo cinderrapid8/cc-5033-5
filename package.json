@@ -6,9 +6,11 @@
   "scripts": {
     "build": "node-gyp configure build",
     "gen:images": "node test/generate-images.js",
+    "gen:fixtures": "node -e \"require('./test/fixtures').writeFixtures()\"",
     "check": "node test/run-checks.js",
-    "start": "node src/server.js",
-    "test": "node test/run-checks.js"
+    "check:e2e": "node test/run-e2e-color.js",
+    "test": "node test/run-checks.js && node test/run-e2e-color.js",
+    "start": "node src/server.js"
   },
   "license": "ISC",
   "dependencies": {

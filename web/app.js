@@ -33,6 +33,31 @@ async function loadCapabilities() {
   updateExplain();
 }
 
+async function loadFixtures() {
+  const sel = $('fixtureSelect');
+  try {
+    const r = await fetch('/api/fixtures');
+    const j = await r.json();
+    if (!j.ok) throw j;
+    sel.innerHTML = '';
+    if (!j.fixtures.length) {
+      const o = document.createElement('option');
+      o.textContent = '（服务端未找到受控样例，请先运行 npm run gen:fixtures）';
+      o.disabled = true; o.selected = true;
+      sel.appendChild(o);
+      $('btnLoadFixture').disabled = true;
+      return;
+    }
+    for (const f of j.fixtures) {
+      const o = document.createElement('option');
+      o.value = f.url;
+      const cfg = f.profileMissing ? '无嵌入配置' : f.profileDescription;
+      o.textContent = `${f.description} — ${f.width}×${f.height} ${f.bits}位 ${cfg}`;
+      sel.appendChild(o);
+    }
+  } catch (e) { showError(e); }
+}
+
 function fillSelect(sel, items, selectedId) {
   sel.innerHTML = '';
   for (const it of items) {
@@ -71,6 +96,10 @@ $('file').addEventListener('change', async () => {
   clearError();
   const f = $('file').files[0];
   if (!f) return;
+  await inspectFile(f);
+});
+
+async function inspectFile(f) {
   lastImageFile = f;
   const fd = new FormData();
   fd.append('image', f);
@@ -86,6 +115,23 @@ $('file').addEventListener('change', async () => {
       </div>
       ${identityBlock('当前嵌入的源配置', j.image.embeddedProfile, j.image.profileMissing)}`;
     $('missingSource').style.display = j.image.profileMissing ? 'block' : 'none';
+    $('comparePanel').innerHTML = '<div class="idbox" style="color:var(--muted)">执行转换后在此显示采样点编码值、Lab、配置指纹与 ΔE2000。</div>';
+    $('verifyPanel').innerHTML = '<div class="idbox" style="color:var(--muted)">执行转换后在此显示独立验收结果。</div>';
+  } catch (e) { showError(e); }
+}
+
+$('btnLoadFixture').addEventListener('click', async () => {
+  clearError();
+  const url = $('fixtureSelect').value;
+  if (!url) return;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw { error: { code: 'FIXTURE_FETCH', message: '受控样例获取失败' } };
+    const blob = await resp.blob();
+    const name = url.split('/').pop();
+    const f = new File([blob], name, { type: 'image/png' });
+    $('file').value = '';
+    await inspectFile(f);
   } catch (e) { showError(e); }
 });
 
@@ -148,6 +194,71 @@ $('btnConvert').addEventListener('click', async () => {
   } catch (e) { showError(e); } finally { $('btnConvert').disabled = false; }
 });
 
+function renderVerification(v) {
+  const panel = $('verifyPanel');
+  if (!v) {
+    panel.innerHTML = '<div class="idbox" style="color:var(--muted)">本次结果未回传导独立验收证据。</div>';
+    return;
+  }
+  if (v.color && v.color.skipped) {
+    panel.innerHTML = `<div class="idbox"><span class="verify-badge na">未执行像素变换</span>${escapeHtml(v.color.reason)}</div>`;
+    return;
+  }
+  const colorApplicable = v.color && v.color.referenceApplicable;
+  const badgeClass = v.ok ? 'ok' : 'bad';
+  const badgeText = v.ok ? '独立验收通过' : '独立验收失败';
+  const de = v.color && v.color.deltaE2000;
+  const alpha = v.alpha || {};
+  const gamut = v.gamut || {};
+
+  const colorRow = colorApplicable && de
+    ? `<tr><td>色彩（纯 JS 参考引擎）</td>
+        <td>平均 ΔE2000 <b>${de.mean.toFixed(3)}</b>，最大 <b>${de.max.toFixed(3)}</b>，P95 ${de.p95.toFixed(3)}（容差 ${v.color.toleranceDE}）</td>
+        <td>${v.color.withinTolerance ? '<span class="badge-ok">通过</span>' : '<span class="badge-bad">超容差</span>'}</td></tr>
+        <tr><td>编码值偏差</td><td>实际输出 vs 独立推导，最大 ${v.color.encodedMaxDiff} 码值</td><td>—</td></tr>`
+    : `<tr><td>色彩</td><td colspan="2"><span class="verify-badge na">无独立推导</span>${escapeHtml((v.color && v.color.reason) || '不适用')}</td></tr>`;
+
+  const alphaRow = alpha.applicable
+    ? `<tr><td>透明通道</td>
+        <td>逐像素检查 <b>${alpha.checkedPixels}</b> 个，与源不一致 <b>${alpha.mismatchedPixels}</b> 个</td>
+        <td>${alpha.preserved ? '<span class="badge-ok">逐字节保留</span>' : '<span class="badge-bad">被改变</span>'}</td></tr>`
+    : `<tr><td>透明通道</td><td colspan="2">该图不含 alpha，逐像素比对结果为“不适用”（不是未检查）</td></tr>`;
+
+  const gamutRow = gamut.mode === 'gamut-check'
+    ? `<tr><td>品红警报</td>
+        <td>独立推导超界 <b>${gamut.expectedOutOfGamutSamples}</b> 个，缺失警报 <b>${gamut.missingAlarmSamples}</b>，误标 <b>${gamut.unexpectedAlarmSamples}</b></td>
+        <td>${gamut.alarmConsistent ? '<span class="badge-ok">一致</span>' : '<span class="badge-bad">不一致</span>'}</td></tr>`
+    : '';
+
+  const prof = v.profiles || {};
+  const sha = (s) => s ? s.slice(0, 20) + '…' : '—';
+  const match = (m) => m === true ? '<span class="badge-ok">一致</span>'
+    : m === false ? '<span class="badge-bad">不一致</span>' : '未要求比对';
+
+  panel.innerHTML = `
+    <div style="margin-bottom:10px">
+      <span class="verify-badge ${badgeClass}">${badgeText}</span>
+      实际源/目标配置身份：源 <code>${escapeHtml(sha(prof.source && prof.source.actualSha256))}</code>
+      → 目标 <code>${escapeHtml(sha(prof.destination && prof.destination.actualSha256))}</code>
+      ${v.failures && v.failures.length ? `<div class="warnbox" style="margin-top:8px">失败项：${escapeHtml(v.failures.join('、'))}</div>` : ''}
+    </div>
+    <table class="verify-table">
+      <tr><th>证据</th><th>执行依据（来自内核实际像素/配置）</th><th>结论</th></tr>
+      ${colorRow}
+      ${alphaRow}
+      ${gamutRow}
+      <tr><td>源配置身份</td>
+        <td>实际 <code>${escapeHtml(sha(prof.source && prof.source.actualSha256))}</code>
+          期望 <code>${escapeHtml(sha(prof.source && prof.source.expectedSha256))}</code></td>
+        <td>${match(prof.source && prof.source.matchesExpected)}</td></tr>
+      <tr><td>目标配置身份</td>
+        <td>实际 <code>${escapeHtml(sha(prof.destination && prof.destination.actualSha256))}</code>
+          期望 <code>${escapeHtml(sha(prof.destination && prof.destination.expectedSha256))}</code></td>
+        <td>${match(prof.destination && prof.destination.matchesExpected)}</td></tr>
+    </table>
+    <p class="note">独立模型只读取 ICC 参数与源编码值，不调用 lcms；颜色证据与透明证据均来自本次实际输出像素。</p>`;
+}
+
 function renderConvert(j) {
   $('convertResult').innerHTML = `<div class="idbox" style="border-color:#3c5a44">
     <b class="badge-ok">真实像素转换完成（pixelsTouched=${j.pixelsTouched}，${j.bitsPerSample} 位）</b><br>
@@ -187,8 +298,7 @@ function renderConvert(j) {
     </tr>`;
   }).join('');
 
-  $('comparePanel').innerHTML = `
-    ${j.source.assumed ? `<div class="warnbox"><b>源配置为人工假设：</b> ${escapeHtml(j.source.assumption.assumedProfileId)}
+  $('comparePanel').innerHTML = `    ${j.source.assumed ? `<div class="warnbox"><b>源配置为人工假设：</b> ${escapeHtml(j.source.assumption.assumedProfileId)}
       — ${escapeHtml(j.source.assumption.reason)}（记录于 ${escapeHtml(j.source.assumption.recordedAt)}）<br>${escapeHtml(j.source.assumption.warning)}</div>` : ''}
     <div class="grid" style="margin-top:12px">
       ${identityBlock('源配置身份（转换依据）', j.source.identity, false)}
@@ -204,6 +314,8 @@ function renderConvert(j) {
       ${rows}
     </table>
     <p class="note">α 列在转换前后必须相同——透明通道不参与颜色变换。ΔE 小且超色域为 0 表示目标配置可容纳源颜色；超色域占比高时应查看警报/软打样结果，而非凭屏幕观感判断。</p>`;
+
+  renderVerification(j.verification);
 }
 
-loadCapabilities().catch(showError);
+loadCapabilities().then(loadFixtures).catch(showError);
