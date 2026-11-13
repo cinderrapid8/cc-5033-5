@@ -1,0 +1,21 @@
+{
+  "name": "museum-color-tool",
+  "version": "1.0.0",
+  "description": "博物馆数字图像色彩转换：lcms2 内核 + 影像校正界面，assign 与 convert 分离",
+  "main": "src/server.js",
+  "scripts": {
+    "build": "node-gyp configure build",
+    "gen:images": "node test/generate-images.js",
+    "check": "node test/run-checks.js",
+    "start": "node src/server.js",
+    "test": "node test/run-checks.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "node-addon-api": "^8.9.2",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "node-gyp": "^13.1.0"
+  }
+}
